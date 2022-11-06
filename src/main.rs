@@ -29,6 +29,16 @@ use xxhash_rust::const_xxh32;
 */
 
 
+fn set_bit(an_int: u32, bit_index: u8) -> Result<u32, String> {
+    if bit_index <= 31 {
+        Ok(an_int | (0x80000000 >> bit_index))
+    }
+    else {
+        Err(format!("{} > 31", bit_index))
+    }
+}
+
+
 /// In `filter`, once you've chose the appropriate u32, which particular bit should
 /// be flipped?
 fn bit_index(i: u32) -> u8 {
@@ -147,6 +157,90 @@ mod tests {
         }
         for i in 64..96 {
             assert_eq!(bit_array_indices(i), (2, (i - 64) as u8));
+        }
+    }
+
+
+    #[test]
+    fn test_set_bit() {
+        assert_eq!(set_bit(0x00000000,  0), Ok(0x80000000));
+        assert_eq!(set_bit(0x00000000,  1), Ok(0x40000000));
+        assert_eq!(set_bit(0x00000000,  2), Ok(0x20000000));
+        assert_eq!(set_bit(0x00000000,  3), Ok(0x10000000));
+        assert_eq!(set_bit(0x00000000,  4), Ok(0x08000000));
+        assert_eq!(set_bit(0x00000000,  5), Ok(0x04000000));
+        assert_eq!(set_bit(0x00000000,  6), Ok(0x02000000));
+        assert_eq!(set_bit(0x00000000,  7), Ok(0x01000000));
+        assert_eq!(set_bit(0x00000000,  8), Ok(0x00800000));
+        assert_eq!(set_bit(0x00000000,  9), Ok(0x00400000));
+        assert_eq!(set_bit(0x00000000, 10), Ok(0x00200000));
+        assert_eq!(set_bit(0x00000000, 11), Ok(0x00100000));
+        assert_eq!(set_bit(0x00000000, 12), Ok(0x00080000));
+        assert_eq!(set_bit(0x00000000, 13), Ok(0x00040000));
+        assert_eq!(set_bit(0x00000000, 14), Ok(0x00020000));
+        assert_eq!(set_bit(0x00000000, 15), Ok(0x00010000));
+        assert_eq!(set_bit(0x00000000, 16), Ok(0x00008000));
+        assert_eq!(set_bit(0x00000000, 17), Ok(0x00004000));
+        assert_eq!(set_bit(0x00000000, 18), Ok(0x00002000));
+        assert_eq!(set_bit(0x00000000, 19), Ok(0x00001000));
+        assert_eq!(set_bit(0x00000000, 20), Ok(0x00000800));
+        assert_eq!(set_bit(0x00000000, 21), Ok(0x00000400));
+        assert_eq!(set_bit(0x00000000, 22), Ok(0x00000200));
+        assert_eq!(set_bit(0x00000000, 23), Ok(0x00000100));
+        assert_eq!(set_bit(0x00000000, 24), Ok(0x00000080));
+        assert_eq!(set_bit(0x00000000, 25), Ok(0x00000040));
+        assert_eq!(set_bit(0x00000000, 26), Ok(0x00000020));
+        assert_eq!(set_bit(0x00000000, 27), Ok(0x00000010));
+        assert_eq!(set_bit(0x00000000, 28), Ok(0x00000008));
+        assert_eq!(set_bit(0x00000000, 29), Ok(0x00000004));
+        assert_eq!(set_bit(0x00000000, 30), Ok(0x00000002));
+        assert_eq!(set_bit(0x00000000, 31), Ok(0x00000001));
+        for i in 32..=0xff {
+            assert!(set_bit(0x00000000, i).is_err());
+        }
+
+        /*
+        *   f     f  e b   f   f      f    f
+        *   !     !  ! !   !   !      !    !
+        * 1101 1110 1010 1101 1011 1110 1110 1111
+        * 0123 4567 8901 2345 6789 0123 4567 8901
+        *             11 1111 1111 2222 2222 2233
+        *   d    e    a    d    b    e    e    f
+        */
+        assert_eq!(set_bit(0xdeadbeef,  0), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef,  1), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef,  2), Ok(0xfeadbeef));
+        assert_eq!(set_bit(0xdeadbeef,  3), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef,  4), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef,  5), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef,  6), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef,  7), Ok(0xdfadbeef));
+        assert_eq!(set_bit(0xdeadbeef,  8), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef,  9), Ok(0xdeedbeef));
+        assert_eq!(set_bit(0xdeadbeef, 10), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef, 11), Ok(0xdebdbeef));
+        assert_eq!(set_bit(0xdeadbeef, 12), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef, 13), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef, 14), Ok(0xdeafbeef));
+        assert_eq!(set_bit(0xdeadbeef, 15), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef, 16), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef, 17), Ok(0xdeadfeef));
+        assert_eq!(set_bit(0xdeadbeef, 18), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef, 19), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef, 20), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef, 21), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef, 22), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef, 23), Ok(0xdeadbfef));
+        assert_eq!(set_bit(0xdeadbeef, 24), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef, 25), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef, 26), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef, 27), Ok(0xdeadbeff));
+        assert_eq!(set_bit(0xdeadbeef, 28), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef, 29), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef, 30), Ok(0xdeadbeef));
+        assert_eq!(set_bit(0xdeadbeef, 31), Ok(0xdeadbeef));
+        for i in 32..=0xff {
+            assert!(set_bit(0xdeadbeef, i).is_err());
         }
     }
 }
