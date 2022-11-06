@@ -29,6 +29,16 @@ use xxhash_rust::const_xxh32;
 */
 
 
+fn bit_set(an_int: u32, bit_index: u8) -> Result<bool, String> {
+    if bit_index > 31 {
+        Err(format!("{} > 31", bit_index))
+    }
+    else {
+        Ok((((an_int & (0x80000000 >> bit_index)) >> (31 - bit_index)) & 0x1) == 1)
+    }
+}
+
+
 fn set_bit(an_int: u32, bit_index: u8) -> Result<u32, String> {
     if bit_index <= 31 {
         Ok(an_int | (0x80000000 >> bit_index))
@@ -160,6 +170,29 @@ mod tests {
         }
     }
 
+
+    #[test]
+    fn test_bit_set() {
+        for i in 0..31 {
+            assert_eq!(bit_set(0x00000000, i), Ok(false));
+        }
+        for i in 32..=0xff {
+            assert!(bit_set(0x00000000, i).is_err());
+        }
+        let deadbeef_bits = vec![0, 1, 3, 4, 5, 6, 8, 10, 12, 13, 15, 16, 18,
+                19, 20, 21, 22, 24, 25, 26, 28, 29, 30, 31];
+        for i in 0..32 {
+            if deadbeef_bits.contains(&i) {
+                assert_eq!(bit_set(0xdeadbeef, i), Ok(true));
+            }
+            else if i < 32 {
+                assert_eq!(bit_set(0xdeadbeef, i), Ok(false));
+            }
+            else {
+                assert!(bit_set(0xdeadbeef, i).is_err());
+            }
+        }
+    }
 
     #[test]
     fn test_set_bit() {
