@@ -29,6 +29,26 @@ use xxhash_rust::const_xxh32;
 */
 
 
+fn is_in_filter(bytes: &[u8], filter: &Vec<u32>) -> Result<bool, ()> {
+    let mut to_return = true;
+
+    /* Check each hash */
+    for hash_num in 0..8 {
+        let (whichint, whichbit) = bit_array_indices(xxh32::xxh32(bytes, hash_num));
+        if let Ok(is_set) = bit_set(filter[whichint], whichbit) {
+            if !is_set {
+                to_return = false;
+            }
+        }
+        else {
+            return Err(());
+        }
+    }
+
+    Ok(to_return)
+}
+
+
 fn bit_set(an_int: u32, bit_index: u8) -> Result<bool, String> {
     if bit_index > 31 {
         Err(format!("{} > 31", bit_index))
@@ -57,12 +77,12 @@ fn bit_index(i: u32) -> u8 {
 
 
 /// Which u32 in `filter` should `i` be in?
-fn u32_index(i: u32) -> u32 {
-    i / 32
+fn u32_index(i: u32) -> usize {
+    (i / 32) as usize
 }
 
 
-fn bit_array_indices(i: u32) -> (u32, u8) {
+fn bit_array_indices(i: u32) -> (usize, u8) {
     return (u32_index(i), bit_index(i));
 }
 
