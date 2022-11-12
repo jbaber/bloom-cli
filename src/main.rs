@@ -29,7 +29,7 @@ use xxhash_rust::const_xxh32;
 */
 
 
-fn is_in_filter(bytes: &[u8], filter: &Vec<u32>) -> Result<bool, ()> {
+fn is_in_filter(bytes: &[u8], filter: &[u32]) -> Result<bool, ()> {
     let mut to_return = true;
 
     /* Check each hash */
@@ -300,7 +300,7 @@ mod tests {
 
 
 fn main() {
-//  let mut filter: Vec<u32> = vec![0; 103811];
+//  let mut filter: [u32; 103811] = [0; 103811];
  // let input = "Hey, there";
  // println!("{:?}", xxh32::xxh32(input.as_bytes(), 0));
  // println!("{:?}", xxh32::xxh32(input.as_bytes(), 0));
