@@ -76,7 +76,7 @@ fn set_bit(an_int: u64, bit_index: u8) -> Result<u64, String> {
 
 
 
-/// In `filter`, once you've chosen the appropriate u32, which particular
+/// In `filter`, once you've chosen the appropriate u64, which particular
 /// bit should be flipped?
 fn bit_index(i: u64, m: NonZeroUsize) -> u8 {
     let reduced = (i as usize) % usize::from(m);
@@ -85,7 +85,7 @@ fn bit_index(i: u64, m: NonZeroUsize) -> u8 {
 
 
 fn num_u64s(m: NonZeroUsize) -> usize {
-    usize::from(m) / 64 + 1
+    (usize::from(m) - 1)/ 64 + 1
 }
 
 
@@ -108,13 +108,13 @@ mod tests {
 
     #[test]
     fn test_num_u64s() {
-        for m in 1..64 {
+        for m in 1..=64 {
             assert_eq!(num_u64s(NonZeroUsize::new(m).unwrap()), 1);
         }
-        for m in 64..128 {
+        for m in 65..=128 {
             assert_eq!(num_u64s(NonZeroUsize::new(m).unwrap()), 2);
         }
-        for m in 128..192 {
+        for m in 129..=192 {
             assert_eq!(num_u64s(NonZeroUsize::new(m).unwrap()), 3);
         }
     }
