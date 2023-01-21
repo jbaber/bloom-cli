@@ -55,6 +55,7 @@ use std::num::NonZeroUsize;
 // }
 
 
+/// Is bit at index `bit_index` in `an_int` set?
 fn bit_set(an_int: u64, bit_index: u8) -> Result<bool, String> {
     if bit_index > 63 {
         Err(format!("{} > 63", bit_index))
@@ -65,6 +66,7 @@ fn bit_set(an_int: u64, bit_index: u8) -> Result<bool, String> {
 }
 
 
+/// Return result of setting bit at index `bit_index` in `an_int`
 fn set_bit(an_int: u64, bit_index: u8) -> Result<u64, String> {
     if bit_index <= 63 {
         Ok(an_int | (0x8000000000000000 >> bit_index))
@@ -78,24 +80,30 @@ fn set_bit(an_int: u64, bit_index: u8) -> Result<u64, String> {
 
 /// In `filter`, once you've chosen the appropriate u64, which particular
 /// bit should be flipped?
+/// `m` is number of bit sin the filter.
 fn bit_index(i: u64, m: NonZeroUsize) -> u8 {
     let reduced = (i as usize) % usize::from(m);
     return (reduced % 64) as u8;
 }
 
 
+/// `m` is number of bit sin the filter.
 fn num_u64s(m: NonZeroUsize) -> usize {
     (usize::from(m) - 1)/ 64 + 1
 }
 
 
 /// Which u64 in `filter` should `i` be in?
+/// `m` is number of bit sin the filter.
 fn u64_index(i: u64, m: NonZeroUsize) -> usize {
     let reduced = (i as usize) % usize::from(m);
     reduced / 64
 }
 
 
+/// Given bit number i, which u64 should it be in and within that u64, which
+/// bit should it be
+/// `m` is number of bit sin the filter.
 fn bit_array_indices(i: u64, m: NonZeroUsize) -> (usize, u8) {
     return (u64_index(i, m), bit_index(i, m));
 }
@@ -208,6 +216,9 @@ mod tests {
         }
         for i in 128..192 {
             assert_eq!(bit_array_indices(i, nines), (2, (i - 128) as u8));
+        }
+        for i in 0..300 {
+            assert_eq!(bit_array_indices(i, NonZeroUsize::new(10).unwrap()), (0, (i % 10) as u8));
         }
     }
 
