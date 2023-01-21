@@ -1,58 +1,41 @@
 use xxhash_rust::xxh32;
-use xxhash_rust::const_xxh32;
 use std::num::NonZeroUsize;
 
-// const SEED: u32 = 0;
-// 
-// const TEST: u32 = const_xxh32::xxh32(b"TEST", SEED);
-// 
-// fn test_input(text: &str) -> bool {
-//     match xxh32::xxh32(text.as_bytes(), SEED) {
-//         TEST => true,
-//         _ => false
-//     }
-// }
 
-/*
-*  Approximately optimal m (# bits) and k (# hashes) for e error rate and n (# records):
-*  m = -n * log e / (log 2)^2
-*  k = -log e
-*
-*  (logs base 2)
-*
-*  So for error rate of .01 and n = 500000
-*  m = 3321928 bits (fits in 103811 u32s)
-*      This seems to be a terrible approximation, since 500000 can fit in only 
-*      500000 / 8 = 62500 u32s.
-*      Wait, no, you take a hash that comes out to some u32 or whatever and mod m
-*  k = 7
-*
-*  Using the xxHash with 7 different seeds as 7 different hashses, try to start your table
-*/
+fn is_in_filter(bytes: &[u8], filter: &[u64], m: NonZeroUsize) -> Result<bool, ()> {
+    let mut to_return = true;
+
+    /* Check each hash */
+    for hash_num in 0..8 {
+        let (whichint, whichbit) = bit_array_indices(
+            xxh32::xxh32(bytes, hash_num) as u64,
+            m
+        );
+        if let Ok(is_set) = bit_set(filter[whichint], whichbit) {
+            if !is_set {
+                to_return = false;
+            }
+        }
+        else {
+            return Err(());
+        }
+    }
+
+    Ok(to_return)
+}
 
 
-// fn is_in_filter(bytes: &[u8], filter: &[u32]) -> Result<bool, ()> {
-//     let mut to_return = true;
-// 
-//     /* Check each hash */
-//     for hash_num in 0..8 {
-//         let (whichint, whichbit) = bit_array_indices(xxh32::xxh32(bytes, hash_num));
-//         if let Ok(is_set) = bit_set(filter[whichint], whichbit) {
-//             if !is_set {
-//                 to_return = false;
-//             }
-//         }
-//         else {
-//             return Err(());
-//         }
-//     }
-// 
-//     Ok(to_return)
-// }
-
-
-// fn filter_insert(bytes: &[u8], filter: &[u32]) {
-// }
+fn filter_insert(bytes: &[u8], filter: &mut [u64], m: NonZeroUsize) -> Result<(), String> {
+    for hash_num in 0..8 {
+        let hash:u32 = xxh32::xxh32(bytes, hash_num);
+        let (whichint, whichbit) = bit_array_indices(hash as u64, m);
+        match set_bit(filter[whichint], whichbit) {
+            Ok(newint) => {filter[whichint] = newint;},
+            Err(err) => {return Err(err)},
+        }
+    }
+    Ok(())
+}
 
 
 /// Is bit at index `bit_index` in `an_int` set?
@@ -87,7 +70,7 @@ fn bit_index(i: u64, m: NonZeroUsize) -> u8 {
 }
 
 
-/// `m` is number of bit sin the filter.
+/// How many u64s does it take to store `m` bits?
 fn num_u64s(m: NonZeroUsize) -> usize {
     (usize::from(m) - 1)/ 64 + 1
 }
@@ -103,7 +86,7 @@ fn u64_index(i: u64, m: NonZeroUsize) -> usize {
 
 /// Given bit number i, which u64 should it be in and within that u64, which
 /// bit should it be
-/// `m` is number of bit sin the filter.
+/// `m` is number of bits in the filter.
 fn bit_array_indices(i: u64, m: NonZeroUsize) -> (usize, u8) {
     return (u64_index(i, m), bit_index(i, m));
 }
@@ -222,39 +205,6 @@ mod tests {
         }
     }
 
-//  #[test]
-//  fn test_filter() {
-//      let mut filter: [u32; 103811] = [0; 103811];
-//      if let Ok(result) = is_in_filter(b"hey", &filter) {
-//          assert!(!result);
-//      }
-//      else {
-//          assert!(false);
-//      }
-//      filter_insert(b"hey", &filter);
-//      if let Ok(result) = is_in_filter(b"hey", &filter) {
-//          assert!(result);
-//      }
-//      else {
-//          assert!(false);
-//      }
-//      for i in 0..100 {
-//          if let Ok(result) = is_in_filter(i.to_string().as_bytes(), &filter) {
-//              assert!(!result);
-//          }
-//          else {
-//              assert!(false);
-//          }
-//          filter_insert(i.to_string().as_bytes(), &filter);
-//          if let Ok(result) = is_in_filter(i.to_string().as_bytes(), &filter) {
-//              assert!(result);
-//          }
-//          else {
-//              assert!(false);
-//          }
-//      }
-//  }
-
 
     #[test]
     fn test_bit_set() {
@@ -279,19 +229,52 @@ mod tests {
         }
     }
 
-//  #[test]
-//  fn test_filter_insert() {
-//      let known = "known".bytes().collect::<Vec<u8>>();
-//      let known_hashes = vec![1183587150, 2402186983, 4132244288, 3394324783,
-//              1291789908, 1182111577, 867046547, 3528127662,];
-//      for hash_num in 0..8 {
-//          let hash = xxh32::xxh32(&known, hash_num);
-//          assert_eq!(hash, known_hashes[hash_num as usize]);
-//      }
-//      let mut filter: [u8; 103811] = [0; 103811];
-//      filter_insert(&known, &filter);
-//      // assert_eq!(filter[
-//  }
+    #[test]
+    fn test_filter() {
+
+        /* The bytes of the word "known" */
+        let known = "known".bytes().collect::<Vec<u8>>();
+
+        /* The 8 different hashes of the word "known" */
+        let known_hashes = vec![1183587150, 2402186983, 4132244288, 3394324783,
+                1291789908, 1182111577, 867046547, 3528127662,];
+        for hash_num in 0..8 {
+            let hash = xxh32::xxh32(&known, hash_num);
+            assert_eq!(hash, known_hashes[hash_num as usize]);
+        }
+
+        /* Create an empty bloom filter 3321928 bits long
+        *
+        *  Approximately optimal m (# bits) and k (# hashes) for e error rate
+        *  and n (# records):
+        *
+        *  m = -n * log e / (log 2)^2
+        *  k = -log e
+        *
+        *  (logs base 2)
+        *
+        *  So for error rate of .01 and n = 500000
+        *   
+        *  m = 3321928 bits (fits in 51905 u64s)
+        *  k = 7
+        */
+        let m = NonZeroUsize::new(3321928).unwrap();
+        assert_eq!(num_u64s(m), 51906);
+        let mut filter: [u64; 51906] = [0; 51906];
+
+        assert!(!is_in_filter(&known, &filter, m).unwrap());
+        assert!(filter_insert(&known, &mut filter, m).is_ok());
+        assert!(is_in_filter(&known, &filter, m).unwrap());
+
+        for i in 0..10000 {
+            let as_string = i.to_string();
+            let as_bytes = as_string.as_bytes();
+            assert!(!is_in_filter(&as_bytes, &filter, m).unwrap());
+            assert!(filter_insert(&as_bytes, &mut filter, m).is_ok());
+            assert!(is_in_filter(&as_bytes, &filter, m).unwrap());
+        }
+    }
+
 
     #[test]
     fn test_set_bit() {
