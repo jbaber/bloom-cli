@@ -1,13 +1,14 @@
 use std::fs::File;
+use std::io::BufReader;
+use std::io::BufWriter;
 use std::io::Read;
 use std::io::Write;
 use std::num::NonZeroUsize;
 use xxhash_rust::xxh32;
 
-
 fn read_filter_from_disk(filename: &str) -> Result<Vec<u64>, String> {
     let mut file = match File::open(filename) {
-        Ok(file) => file,
+        Ok(file) => BufReader::new(file),
         Err(err) => {
             return Err(format!("{}", err));
         },
@@ -45,7 +46,7 @@ fn read_filter_from_disk(filename: &str) -> Result<Vec<u64>, String> {
 
 fn write_filter_to_disk(filename: &str, filter: &[u64]) -> Result<(), String> {
     let mut file = match File::create(filename) {
-        Ok(file) => file,
+        Ok(file) => BufWriter::new(file),
         Err(err) => {
             return Err(err.to_string());
         },
