@@ -1,5 +1,64 @@
-use xxhash_rust::xxh32;
+use std::fs::File;
+use std::io::Read;
+use std::io::Write;
 use std::num::NonZeroUsize;
+use xxhash_rust::xxh32;
+
+
+fn read_filter_from_disk(filename: &str) -> Result<Vec<u64>, String> {
+    let mut file = match File::open(filename) {
+        Ok(file) => file,
+        Err(err) => {
+            return Err(format!("{}", err));
+        },
+    };
+
+    let mut to_return = Vec::<u64>::new();
+    let mut buffer = [0; 8];
+
+    loop {
+        match file.read(&mut buffer[..]) {
+            Ok(num_bytes_read) => {
+                if num_bytes_read < 8 {
+                    return Ok(to_return);
+                }
+                else {
+                    to_return.push(
+                        ((buffer[0] as u64) << 56) |
+                        ((buffer[1] as u64) << 48) |
+                        ((buffer[2] as u64) << 40) |
+                        ((buffer[3] as u64) << 32) |
+                        ((buffer[4] as u64) << 24) |
+                        ((buffer[5] as u64) << 16) |
+                        ((buffer[6] as u64) <<  8) |
+                        ((buffer[7] as u64) <<  0)
+                    );
+                }
+            },
+            Err(err) => {
+                return Err(format!("{}", err));
+            },
+        }
+    }
+}
+
+
+fn write_filter_to_disk(filename: &str, filter: &[u64]) -> Result<(), String> {
+    let mut file = match File::create(filename) {
+        Ok(file) => file,
+        Err(err) => {
+            return Err(err.to_string());
+        },
+    };
+
+    for int in filter.iter() {
+        if file.write_all(&int.to_be_bytes()).is_err() {
+            return Err(format!("Failed to write to {}", filename));
+        }
+    }
+
+    Ok(())
+}
 
 
 fn is_in_filter(bytes: &[u8], filter: &[u64], m: NonZeroUsize) -> Result<bool, ()> {
@@ -426,11 +485,9 @@ mod tests {
 
 
 fn main() {
-//  let mut filter: [u32] = [0; 103811];
- // let input = "Hey, there";
- // println!("{:?}", xxh32::xxh32(input.as_bytes(), 0));
- // println!("{:?}", xxh32::xxh32(input.as_bytes(), 0));
- // println!("{:?}", xxh32::xxh32(input.as_bytes(), 1));
-    // println!("{:?}", test_input("tEST"));
-    // println!("{:?}", test_input("TEST"));
+    let values = [1u64, 2, 3, 4, 5, 0xdeadbeeffeedface, 6];
+
+    write_filter_to_disk("boo.bin", &values);
+    let output = read_filter_from_disk("boo.bin");
+    println!("boo: {:?}", output);
 }
