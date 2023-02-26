@@ -1,3 +1,4 @@
+use std::env;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::BufWriter;
@@ -57,6 +58,7 @@ fn write_filter_to_disk(filename: &str, filter: &[u64]) -> Result<(), String> {
             return Err(format!("Failed to write to {}", filename));
         }
     }
+
 
     Ok(())
 }
@@ -485,10 +487,47 @@ mod tests {
 }
 
 
-fn main() {
-    let values = [1u64, 2, 3, 4, 5, 0xdeadbeeffeedface, 6];
+fn print_usage(executable_name: &str) {
+    println!("Usage: {} [options] [filename]
 
-    write_filter_to_disk("boo.bin", &values);
-    let output = read_filter_from_disk("boo.bin");
-    println!("boo: {:?}", output);
+  Options:
+    -h, --help  Print this help
+    filename    An existing bloom filter on disk to be read in",
+    executable_name);
+}
+
+
+fn create_filter(filename: &str) {
+    if filename == "" {
+        eprintln!("Creating new filter");
+    }
+    else {
+        eprintln!("Reading existing filter from {}", filename);
+    }
+}
+
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+
+    match args.len() {
+        1 => {
+            eprintln!("'--help' for help");
+            create_filter("");
+        },
+        _ => {
+            if args[1] == "--help" || args[1] == "-h" {
+                print_usage(&args[0]);
+            }
+            else {
+                create_filter(&args[1]);
+            }
+        }
+    }
+
+//  let values = [1u64, 2, 3, 4, 5, 0xdeadbeeffeedface, 6];
+
+//  write_filter_to_disk("boo.bin", &values);
+//  let output = read_filter_from_disk("boo.bin");
+//  println!("boo: {:?}", output);
 }
