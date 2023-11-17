@@ -1,3 +1,4 @@
+use argh::FromArgs;
 use std::env;
 use std::fs::File;
 use std::io::BufReader;
@@ -487,41 +488,33 @@ mod tests {
 }
 
 
-fn print_usage(executable_name: &str) {
-    println!("Usage: {} [options] [filename]
+#[derive(Debug)]
+#[derive(FromArgs)]
+/// Elementary bloom filter
+struct Args {
+    /// an existing bloom filter's filename or that of one to be created
+    #[argh(positional)]
+    filter_filename: String,
 
-  Options:
-    -h, --help  Print this help
-    filename    An existing bloom filter on disk to be read in",
-    executable_name);
-}
-
-
-fn create_filter(filename: &str) {
-    if filename == "" {
-        eprintln!("Creating new filter");
-    }
-    else {
-        eprintln!("Reading existing filter from {}", filename);
-    }
+    /// file to be added to or searched for in the filter
+    #[argh(positional)]
+    file: Option<String>
 }
 
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let args: Args = argh::from_env();
 
-    match args.len() {
-        1 => {
-            eprintln!("'--help' for help");
-            create_filter("");
+    match args.file {
+        Some(filename) => {
+            eprintln!(
+                "Adding file '{}' to filter '{}'",
+                filename,
+                args.filter_filename
+            );
         },
         _ => {
-            if args[1] == "--help" || args[1] == "-h" {
-                print_usage(&args[0]);
-            }
-            else {
-                create_filter(&args[1]);
-            }
+            eprintln!("Creating an empty filter in '{}'", args.filter_filename);
         }
     }
 
