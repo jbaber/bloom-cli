@@ -11,10 +11,34 @@ use std::path::Path;
 use std::process;
 use xxhash_rust::xxh32;
 
+/* Create an empty bloom filter 3321928 bits long
+*
+*  Approximately optimal m (# bits) and k (# hashes) for e error rate
+*  and n (# records):
+*
+*  m = -n * log e / (log 2)^2
+*  k = -log e
+*
+*  (logs base 2)
+*
+*  So for error rate of .01 and n = 500000
+*   
+*  m = 3321928 bits (fits in 51905 u64s)
+*  k = 7
+*/
 // TODO Somehow make these NonZeroUsize without running into needing to .into()
 // later since that's not allowed for const
 const M: usize = 3321928;
 const FILTER_NUM_BITS: usize = 51906;
+
+static M_NZ: NonZeroUsize = match NonZeroUsize::new(M) {
+    Some(good_num) => {
+        good_num
+    }
+    None => {
+        panic!("Internal error with non-zero number");
+    }
+};
 
 fn read_filter_from_disk(filename: &str) -> Result<Vec<u64>, String> {
     let mut file = match File::open(filename) {
@@ -314,43 +338,19 @@ mod tests {
             assert_eq!(hash, known_hashes[hash_num as usize]);
         }
 
-        /* Create an empty bloom filter 3321928 bits long
-        *
-        *  Approximately optimal m (# bits) and k (# hashes) for e error rate
-        *  and n (# records):
-        *
-        *  m = -n * log e / (log 2)^2
-        *  k = -log e
-        *
-        *  (logs base 2)
-        *
-        *  So for error rate of .01 and n = 500000
-        *   
-        *  m = 3321928 bits (fits in 51905 u64s)
-        *  k = 7
-        */
-        let m = match NonZeroUsize::new(M) {
-            Some(good_num) => {
-                good_num
-            }
-            None => {
-                println!("'{:?}' isn't a non-zero number", M);
-                process::exit(7);
-            }
-        };
-        assert_eq!(num_u64s(m), FILTER_NUM_BITS);
+        assert_eq!(num_u64s(M_NZ), FILTER_NUM_BITS);
         let mut filter: [u64; FILTER_NUM_BITS] = [0; FILTER_NUM_BITS];
 
-        assert!(!is_in_filter(&known, &filter, m).unwrap());
-        assert!(filter_insert(&known, &mut filter, m).is_ok());
-        assert!(is_in_filter(&known, &filter, m).unwrap());
+        assert!(!is_in_filter(&known, &filter, M_NZ).unwrap());
+        assert!(filter_insert(&known, &mut filter, M_NZ).is_ok());
+        assert!(is_in_filter(&known, &filter, M_NZ).unwrap());
 
         for i in 0..10000 {
             let as_string = i.to_string();
             let as_bytes = as_string.as_bytes();
-            assert!(!is_in_filter(&as_bytes, &filter, m).unwrap());
-            assert!(filter_insert(&as_bytes, &mut filter, m).is_ok());
-            assert!(is_in_filter(&as_bytes, &filter, m).unwrap());
+            assert!(!is_in_filter(&as_bytes, &filter, M_NZ).unwrap());
+            assert!(filter_insert(&as_bytes, &mut filter, M_NZ).is_ok());
+            assert!(is_in_filter(&as_bytes, &filter, M_NZ).unwrap());
         }
     }
 
@@ -564,9 +564,20 @@ fn main() {
                     );
 
                     match read_filter_from_disk(&args.filter_filename) {
-                        Ok(filter) => {
-                            // match filter_insert(&file_to_insert, 
-                            todo!();
+                        Ok(mut filter) => {
+                            match filter_insert(
+                                &file_to_insert,
+                                &mut filter,
+                                M_NZ
+                            ) {
+                                Ok(()) => {
+                                    process::exit(0);
+                                },
+                                Err(err) => {
+                                    println!("ERROR: {:?}", err);
+                                    process::exit(7);
+                                }
+                            }
                         },
                         Err(err) => {
                             println!("ERROR: {:?}", err);
