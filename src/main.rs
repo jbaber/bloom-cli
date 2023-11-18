@@ -1,11 +1,14 @@
 use argh::FromArgs;
 use std::env;
+use std::fs;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::BufWriter;
 use std::io::Read;
 use std::io::Write;
 use std::num::NonZeroUsize;
+use std::path::Path;
+use std::process;
 use xxhash_rust::xxh32;
 
 fn read_filter_from_disk(filename: &str) -> Result<Vec<u64>, String> {
@@ -492,6 +495,13 @@ mod tests {
 #[derive(FromArgs)]
 /// Elementary bloom filter
 struct Args {
+
+    /// query if <file> has already been inserted into filter at
+    /// <filter_filename>.  If not provided, <file> will be inserted into the
+    /// filter.
+    #[argh(switch, short='q')]
+    query: bool,
+
     /// an existing bloom filter's filename or that of one to be created
     #[argh(positional)]
     filter_filename: String,
@@ -507,20 +517,75 @@ fn main() {
 
     match args.file {
         Some(filename) => {
-            eprintln!(
-                "Adding file '{}' to filter '{}'",
-                filename,
-                args.filter_filename
-            );
+            if filename.eq(&args.filter_filename) {
+                println!("Can't add a filter to itself");
+                process::exit(5);
+            }
+
+            let f_path = Path::new(&filename);
+            if !f_path.exists() {
+                println!("Cannot access file '{}'", filename);
+                process::exit(2);
+            }
+            if !f_path.is_file() {
+                println!("'{}' isn't a regular file", filename);
+                process::exit(3);
+            }
+            let file_to_insert = match fs::read(&filename) {
+                Ok(actual_bytes) => {
+                    actual_bytes
+                },
+                Err(err) => {
+                    println!("Unable to read '{}'", filename);
+                    process::exit(6);
+                }
+            };
+
+            let ff_path = Path::new(&args.filter_filename);
+            if ff_path.exists() {
+                if ff_path.is_file() {
+                    eprintln!(
+                        "Adding file '{}' to existing filter at '{}'",
+                        filename,
+                        args.filter_filename
+                    );
+
+                    match read_filter_from_disk(&args.filter_filename) {
+                        Ok(filter) => {
+                            // match filter_insert(&file_to_insert, 
+                            todo!();
+                        },
+                        Err(err) => {
+                            println!("ERROR: {:?}", err);
+                            process::exit(5);
+                        }
+                    }
+                }
+                else {
+                    println!(
+                        "'{}' isn't a regular file",
+                        args.filter_filename
+                    );
+                    process::exit(3);
+                }
+            }
+
+            else {
+                eprintln!(
+                    "Adding file '{}' to new filter at '{}'",
+                    filename,
+                    args.filter_filename
+                );
+                todo!();
+            }
         },
-        _ => {
-            eprintln!("Creating an empty filter in '{}'", args.filter_filename);
+
+        None => {
+            eprintln!("Creating a new filter at '{}'", args.filter_filename);
+            todo!();
+//          let m = NonZeroUsize::new(3321928).unwrap();
+//          assert_eq!(num_u64s(m), 51906);
+//          let mut filter: [u64; 51906] = [0; 51906];
         }
     }
-
-//  let values = [1u64, 2, 3, 4, 5, 0xdeadbeeffeedface, 6];
-
-//  write_filter_to_disk("boo.bin", &values);
-//  let output = read_filter_from_disk("boo.bin");
-//  println!("boo: {:?}", output);
 }
