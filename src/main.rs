@@ -1,5 +1,4 @@
 use argh::FromArgs;
-use std::env;
 use std::fs;
 use std::fs::File;
 use std::io::BufReader;
@@ -529,7 +528,7 @@ fn main() {
     let args: Args = argh::from_env();
 
     match args.file {
-        Some(filename) => {
+        Some(ref filename) => {
             if filename.eq(&args.filter_filename) {
                 println!("Can't add a filter to itself");
                 process::exit(5);
@@ -556,6 +555,10 @@ fn main() {
 
             let ff_path = Path::new(&args.filter_filename);
             if ff_path.exists() {
+                if args.query {
+                    todo!();
+                }
+
                 if ff_path.is_file() {
                     eprintln!(
                         "Adding file '{}' to existing filter at '{}'",
@@ -595,12 +598,66 @@ fn main() {
             }
 
             else {
+                if args.query {
+                    match args.file {
+
+                        /* No way for compiler to know `filename` can be used
+                         * here again since everything exits before here. */
+                        Some(filename) => {
+                            println!(
+                                "Should not ask if '{}' is in an empty filter you're about to create at {}",
+                                filename,
+                                args.filter_filename
+                            );
+                            process::exit(9);
+                        },
+
+                        /* This should be impossible */
+                        None => {
+                            println!("Cannot query on no file.");
+                            process::exit(11);
+                        }
+                    }
+                }
+
                 eprintln!(
                     "Adding file '{}' to new filter at '{}'",
                     filename,
                     args.filter_filename
                 );
-                todo!();
+
+                let file_to_insert = match fs::read(&filename) {
+                    Ok(actual_bytes) => {
+                        actual_bytes
+                    },
+                    Err(err) => {
+                        println!("Unable to read '{}' ({:?})", filename, err);
+                        process::exit(6);
+                    }
+                };
+
+                let mut filter: [u64; FILTER_NUM_BITS] = [0; FILTER_NUM_BITS];
+                match filter_insert(&file_to_insert, &mut filter, M_NZ) {
+                    Ok(()) => {
+                        match write_filter_to_disk(&args.filter_filename, &filter) {
+                            Ok(()) => {
+                                process::exit(0);
+                            },
+                            Err(err) => {
+                                println!(
+                                    "Couldn't write filter to disk at '{}': {:?}",
+                                    &args.filter_filename,
+                                    err
+                                );
+                                process::exit(10);
+                            }
+                        };
+                    },
+                    Err(err) => {
+                        println!("ERROR: {:?}", err);
+                        process::exit(8);
+                    }
+                };
             }
         },
 
