@@ -11,6 +11,11 @@ use std::path::Path;
 use std::process;
 use xxhash_rust::xxh32;
 
+// TODO Somehow make these NonZeroUsize without running into needing to .into()
+// later since that's not allowed for const
+const M: usize = 3321928;
+const FILTER_NUM_BITS: usize = 51906;
+
 fn read_filter_from_disk(filename: &str) -> Result<Vec<u64>, String> {
     let mut file = match File::open(filename) {
         Ok(file) => BufReader::new(file),
@@ -324,9 +329,17 @@ mod tests {
         *  m = 3321928 bits (fits in 51905 u64s)
         *  k = 7
         */
-        let m = NonZeroUsize::new(3321928).unwrap();
-        assert_eq!(num_u64s(m), 51906);
-        let mut filter: [u64; 51906] = [0; 51906];
+        let m = match NonZeroUsize::new(M) {
+            Some(good_num) => {
+                good_num
+            }
+            None => {
+                println!("'{:?}' isn't a non-zero number", M);
+                process::exit(7);
+            }
+        };
+        assert_eq!(num_u64s(m), FILTER_NUM_BITS);
+        let mut filter: [u64; FILTER_NUM_BITS] = [0; FILTER_NUM_BITS];
 
         assert!(!is_in_filter(&known, &filter, m).unwrap());
         assert!(filter_insert(&known, &mut filter, m).is_ok());
@@ -536,7 +549,7 @@ fn main() {
                     actual_bytes
                 },
                 Err(err) => {
-                    println!("Unable to read '{}'", filename);
+                    println!("Unable to read '{}' ({:?})", filename, err);
                     process::exit(6);
                 }
             };
@@ -583,9 +596,6 @@ fn main() {
         None => {
             eprintln!("Creating a new filter at '{}'", args.filter_filename);
             todo!();
-//          let m = NonZeroUsize::new(3321928).unwrap();
-//          assert_eq!(num_u64s(m), 51906);
-//          let mut filter: [u64; 51906] = [0; 51906];
         }
     }
 }
