@@ -96,7 +96,7 @@ fn write_filter_to_disk(filename: &str, filter: &[u64]) -> Result<(), String> {
 }
 
 
-fn is_in_filter(bytes: &[u8], filter: &[u64], m: NonZeroUsize) -> Result<bool, ()> {
+fn is_in_filter(bytes: &[u8], filter: &[u64], m: NonZeroUsize) -> Result<bool, String> {
     let mut to_return = true;
 
     /* Check each hash */
@@ -111,7 +111,7 @@ fn is_in_filter(bytes: &[u8], filter: &[u64], m: NonZeroUsize) -> Result<bool, (
             }
         }
         else {
-            return Err(());
+            return Err("Unable to set bit in filter".to_owned());
         }
     }
 
@@ -524,146 +524,212 @@ struct Args {
 }
 
 
-fn main() {
-    let args: Args = argh::from_env();
+fn fresh_filter() -> [u64; FILTER_NUM_BITS] {
+    [0; FILTER_NUM_BITS]
+}
 
-    match args.file {
-        Some(ref filename) => {
-            if filename.eq(&args.filter_filename) {
-                println!("Can't add a filter to itself");
-                process::exit(5);
+
+fn bytes_or_fail(filename: &str) -> Vec<u8> {
+    match fs::read(&filename) {
+        Ok(actual_bytes) => {
+            actual_bytes
+        },
+        Err(err) => {
+            println!("Unable to read '{}' ({:?})", filename, err);
+            process::exit(6);
+        }
+    }
+}
+
+
+fn regular_file_or_fail(filename: &str) {
+    let f_path = Path::new(&filename);
+    if !f_path.exists() {
+        println!("Cannot access file '{}'", filename);
+        process::exit(2);
+    }
+    if !f_path.is_file() {
+        println!("'{}' isn't a regular file", filename);
+        process::exit(3);
+    }
+}
+
+
+/// Procedure that will exit whole program happily or with error
+fn query_existing_filter_and_quit(filter_filename: &str, query_filename: &str) {
+    if query_filename.eq(filter_filename) {
+        println!("Can't query for a filter in itself");
+        process::exit(5);
+    }
+
+    let filter: Result<Vec<u64>, String> = read_filter_from_disk(&filter_filename).or_else(|err| {
+        println!("ERROR: {:?}", err);
+        process::exit(16);
+    });
+    let filter = filter.unwrap();
+
+    match is_in_filter(&bytes_or_fail(query_filename), &filter, M_NZ) {
+        Ok(is_in) => {
+            if is_in {
+                println!("IN");
             }
-
-            let f_path = Path::new(&filename);
-            if !f_path.exists() {
-                println!("Cannot access file '{}'", filename);
-                process::exit(2);
+            else {
+                println!("NOT IN");
             }
-            if !f_path.is_file() {
-                println!("'{}' isn't a regular file", filename);
-                process::exit(3);
-            }
-            let file_to_insert = match fs::read(&filename) {
-                Ok(actual_bytes) => {
-                    actual_bytes
-                },
-                Err(err) => {
-                    println!("Unable to read '{}' ({:?})", filename, err);
-                    process::exit(6);
-                }
-            };
+            process::exit(0);
+        },
+        Err(err) => {
+            println!("ERROR: {}", err);
+            process::exit(15);
+        },
+    }
+}
 
-            let ff_path = Path::new(&args.filter_filename);
-            if ff_path.exists() {
-                if args.query {
-                    todo!();
-                }
 
-                if ff_path.is_file() {
-                    eprintln!(
-                        "Adding file '{}' to existing filter at '{}'",
-                        filename,
-                        args.filter_filename
-                    );
+/// Procedure that will exit whole program happily or with error
+fn insert_existing_filter_and_quit(filter_filename: &str, insert_filename: &str) {
+    if insert_filename.eq(filter_filename) {
+        println!("Can't add a filter to itself");
+        process::exit(5);
+    }
 
-                    match read_filter_from_disk(&args.filter_filename) {
-                        Ok(mut filter) => {
-                            match filter_insert(
-                                &file_to_insert,
-                                &mut filter,
-                                M_NZ
-                            ) {
-                                Ok(()) => {
-                                    process::exit(0);
-                                },
-                                Err(err) => {
-                                    println!("ERROR: {:?}", err);
-                                    process::exit(7);
-                                }
-                            }
+    eprintln!(
+        "Adding file '{}' to existing filter at '{}'",
+        insert_filename,
+        filter_filename
+    );
+
+    match read_filter_from_disk(&filter_filename) {
+        Ok(mut filter) => {
+            let bytes_to_insert = bytes_or_fail(&insert_filename);
+            match filter_insert(&bytes_to_insert, &mut filter, M_NZ) {
+                Ok(()) => {
+                    match write_filter_to_disk(&insert_filename, &filter) {
+                        Ok(()) => {
+                            process::exit(0);
                         },
                         Err(err) => {
                             println!("ERROR: {:?}", err);
-                            process::exit(5);
+                            process::exit(16);
                         }
                     }
+                },
+                Err(err) => {
+                    println!("ERROR: {:?}", err);
+                    process::exit(7);
                 }
-                else {
-                    println!(
-                        "'{}' isn't a regular file",
-                        args.filter_filename
-                    );
-                    process::exit(3);
-                }
-            }
-
-            else {
-                if args.query {
-                    match args.file {
-
-                        /* No way for compiler to know `filename` can be used
-                         * here again since everything exits before here. */
-                        Some(filename) => {
-                            println!(
-                                "Should not ask if '{}' is in an empty filter you're about to create at {}",
-                                filename,
-                                args.filter_filename
-                            );
-                            process::exit(9);
-                        },
-
-                        /* This should be impossible */
-                        None => {
-                            println!("Cannot query on no file.");
-                            process::exit(11);
-                        }
-                    }
-                }
-
-                eprintln!(
-                    "Adding file '{}' to new filter at '{}'",
-                    filename,
-                    args.filter_filename
-                );
-
-                let file_to_insert = match fs::read(&filename) {
-                    Ok(actual_bytes) => {
-                        actual_bytes
-                    },
-                    Err(err) => {
-                        println!("Unable to read '{}' ({:?})", filename, err);
-                        process::exit(6);
-                    }
-                };
-
-                let mut filter: [u64; FILTER_NUM_BITS] = [0; FILTER_NUM_BITS];
-                match filter_insert(&file_to_insert, &mut filter, M_NZ) {
-                    Ok(()) => {
-                        match write_filter_to_disk(&args.filter_filename, &filter) {
-                            Ok(()) => {
-                                process::exit(0);
-                            },
-                            Err(err) => {
-                                println!(
-                                    "Couldn't write filter to disk at '{}': {:?}",
-                                    &args.filter_filename,
-                                    err
-                                );
-                                process::exit(10);
-                            }
-                        };
-                    },
-                    Err(err) => {
-                        println!("ERROR: {:?}", err);
-                        process::exit(8);
-                    }
-                };
             }
         },
+        Err(err) => {
+            println!("ERROR: {:?}", err);
+            process::exit(5);
+        }
+    }
+}
 
+
+/// Procedure that will exit whole program happily or with error
+fn new_filter_and_quit(filter_filename: &str, to_add_filename: Option<&str>) {
+    let ff_path = Path::new(&filter_filename);
+    if ff_path.exists() {
+        println!("'{}' already exists", filter_filename);
+        process::exit(12);
+    }
+    eprintln!("Creating a new filter at '{}'", filter_filename);
+    let mut filter = fresh_filter();
+
+    let file_to_insert = match to_add_filename {
+        Some(filename) => {
+            match fs::read(&filename) {
+                Ok(actual_bytes) => {
+                    Some(actual_bytes)
+                },
+                Err(err) => {
+                    println!("Unable to read '{:?}' ({:?})", to_add_filename.unwrap(), err);
+                    process::exit(6);
+                }
+            }
+        },
         None => {
-            eprintln!("Creating a new filter at '{}'", args.filter_filename);
-            todo!();
+            None
+        },
+    };
+
+    if file_to_insert.is_some() {
+        if let Err(err) = filter_insert(&file_to_insert.unwrap(), &mut filter, M_NZ) {
+            println!("ERROR: {:?}", err);
+            process::exit(13);
+        }
+    }
+
+    match write_filter_to_disk(&filter_filename, &filter) {
+        Ok(()) => {
+            process::exit(0);
+        },
+        Err(err) => {
+            println!(
+                "Couldn't write filter to disk at '{}': {:?}",
+                &filter_filename,
+                err
+            );
+            process::exit(10);
+        }
+    };
+}
+
+
+fn main() {
+    let args: Args = argh::from_env();
+
+    let ff_path = Path::new(&args.filter_filename);
+    let create_new_filter = if ff_path.exists() {
+        regular_file_or_fail(&args.filter_filename);
+        false
+    }
+    else {
+        true
+    };
+
+    let given_filename = if args.file.is_some() {
+        let filename = args.file.unwrap();
+        let f_path = Path::new(&filename);
+        if !f_path.exists() {
+            println!("Cannot access file '{}'", filename);
+            process::exit(2);
+        }
+        if !f_path.is_file() {
+            println!("'{}' isn't a regular file", filename);
+            process::exit(3);
+        }
+        Some(filename)
+    }
+    else {
+        None
+    };
+
+    if create_new_filter {
+        if given_filename.is_some() && args.query {
+            println!(
+                "Should not ask if '{}' is in an empty filter you're about to create at {}",
+                given_filename.unwrap(),
+                args.filter_filename
+            );
+            process::exit(9);
+        }
+        new_filter_and_quit(&args.filter_filename, None);
+    }
+    else {
+        if given_filename.is_some() {
+            if args.query {
+                query_existing_filter_and_quit(&args.filter_filename, &given_filename.unwrap());
+            }
+            else {
+                insert_existing_filter_and_quit(&args.filter_filename, &given_filename.unwrap());
+            }
+        }
+        else {
+            println!("Nothing to do with an existing filter if no file given to query or insert.");
+            process::exit(14);
         }
     }
 }
