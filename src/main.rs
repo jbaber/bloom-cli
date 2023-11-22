@@ -164,12 +164,6 @@ fn bit_index(i: u64, m: NonZeroUsize) -> u8 {
 }
 
 
-/// How many u64s does it take to store `m` bits?
-fn num_u64s(m: NonZeroUsize) -> usize {
-    (usize::from(m) - 1)/ 64 + 1
-}
-
-
 /// Which u64 in `filter` should `i` be in?
 /// `m` is number of bit sin the filter.
 fn u64_index(i: u64, m: NonZeroUsize) -> usize {
@@ -190,6 +184,13 @@ fn bit_array_indices(i: u64, m: NonZeroUsize) -> (usize, u8) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+
+    /// How many u64s does it take to store `m` bits?
+    fn num_u64s(m: NonZeroUsize) -> usize {
+        (usize::from(m) - 1)/ 64 + 1
+    }
+
 
     #[test]
     fn test_num_u64s() {
