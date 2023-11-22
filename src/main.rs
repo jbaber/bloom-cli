@@ -519,7 +519,7 @@ struct Args {
     filter_filename: String,
 
     /// file to be added to or searched for in the filter
-    #[argh(positional)]
+    #[argh(option, short='f')]
     file: Option<String>
 }
 
