@@ -604,7 +604,7 @@ fn insert_existing_filter_and_quit(filter_filename: &str, insert_filename: &str)
             let bytes_to_insert = bytes_or_fail(&insert_filename);
             match filter_insert(&bytes_to_insert, &mut filter, M_NZ) {
                 Ok(()) => {
-                    match write_filter_to_disk(&insert_filename, &filter) {
+                    match write_filter_to_disk(&filter_filename, &filter) {
                         Ok(()) => {
                             process::exit(0);
                         },
