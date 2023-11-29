@@ -507,21 +507,18 @@ mod tests {
 #[derive(FromArgs)]
 /// Elementary bloom filter
 struct Args {
-
-    /// query if <file> has already been inserted into filter at
-    /// <filter_filename>.  If not provided, <file> will be inserted into the
-    /// filter.
-    #[argh(switch, short='q')]
-    query: bool,
-
     /// an existing bloom filter's filename or that of one to be created.
     /// `-x` is to emphasize that this can overwrite an existing file.
     #[argh(option, short='x')]
     filter_filename: String,
 
-    /// file to be added to or searched for in the filter
-    #[argh(option, short='f')]
-    file: Option<String>
+    /// file to (i)nsert into the filter
+    #[argh(option, short='i')]
+    file_to_insert: Option<String>,
+
+    /// file to (q)uery for in the filter
+    #[argh(option, short='q')]
+    file_to_query: Option<String>,
 }
 
 
@@ -691,28 +688,20 @@ fn main() {
         true
     };
 
-    let given_filename = if args.file.is_some() {
-        let filename = args.file.unwrap();
-        let f_path = Path::new(&filename);
-        if !f_path.exists() {
-            println!("Cannot access file '{}'", filename);
-            process::exit(2);
-        }
-        if !f_path.is_file() {
-            println!("'{}' isn't a regular file", filename);
-            process::exit(3);
-        }
-        Some(filename)
+    if args.file_to_insert.is_some() && args.file_to_query.is_some() {
+        println!(
+            "Cannot both insert and query for {}/{}",
+            args.file_to_insert.unwrap(),
+            args.file_to_query.unwrap()
+        );
+        process::exit(17);
     }
-    else {
-        None
-    };
 
     if create_new_filter {
-        if given_filename.is_some() && args.query {
+        if args.file_to_query.is_some() {
             println!(
                 "Should not ask if '{}' is in an empty filter you're about to create at {}",
-                given_filename.unwrap(),
+                args.file_to_query.unwrap(),
                 args.filter_filename
             );
             process::exit(9);
@@ -720,13 +709,17 @@ fn main() {
         new_filter_and_quit(&args.filter_filename, None);
     }
     else {
-        if given_filename.is_some() {
-            if args.query {
-                query_existing_filter_and_quit(&args.filter_filename, &given_filename.unwrap());
-            }
-            else {
-                insert_existing_filter_and_quit(&args.filter_filename, &given_filename.unwrap());
-            }
+        if args.file_to_insert.is_some() {
+            insert_existing_filter_and_quit(
+                &args.filter_filename,
+                &args.file_to_insert.unwrap()
+            );
+        }
+        else if args.file_to_query.is_some() {
+            query_existing_filter_and_quit(
+                &args.filter_filename,
+                &args.file_to_query.unwrap()
+            );
         }
         else {
             println!("Nothing to do with an existing filter if no file given to query or insert.");
