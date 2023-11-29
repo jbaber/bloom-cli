@@ -514,8 +514,9 @@ struct Args {
     #[argh(switch, short='q')]
     query: bool,
 
-    /// an existing bloom filter's filename or that of one to be created
-    #[argh(positional)]
+    /// an existing bloom filter's filename or that of one to be created.
+    /// `-x` is to emphasize that this can overwrite an existing file.
+    #[argh(option, short='x')]
     filter_filename: String,
 
     /// file to be added to or searched for in the filter
