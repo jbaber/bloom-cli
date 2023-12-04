@@ -627,7 +627,7 @@ fn insert_existing_filter_and_quit(filter_filename: &str, insert_filename: &str)
 
 
 /// Procedure that will exit whole program happily or with error
-fn new_filter_and_quit(filter_filename: &str, to_add_filename: Option<&str>) {
+fn new_filter_and_quit(filter_filename: &str, to_add_filename: Option<String>) {
     let ff_path = Path::new(&filter_filename);
     if ff_path.exists() {
         println!("'{}' already exists", filter_filename);
@@ -637,7 +637,7 @@ fn new_filter_and_quit(filter_filename: &str, to_add_filename: Option<&str>) {
     let mut filter = fresh_filter();
 
     let file_to_insert = match to_add_filename {
-        Some(filename) => {
+        Some(ref filename) => {
             match fs::read(&filename) {
                 Ok(actual_bytes) => {
                     Some(actual_bytes)
@@ -706,7 +706,13 @@ fn main() {
             );
             process::exit(9);
         }
-        new_filter_and_quit(&args.filter_filename, None);
+        let file_to_insert = if args.file_to_insert.is_some() {
+            Some(args.file_to_insert.unwrap())
+        }
+        else {
+            None
+        };
+        new_filter_and_quit(&args.filter_filename, file_to_insert);
     }
     else {
         if args.file_to_insert.is_some() {
