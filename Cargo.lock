@@ -34,7 +34,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cli-bloom"
+name = "bloom-cli"
 version = "0.1.0"
 dependencies = [
  "argh",

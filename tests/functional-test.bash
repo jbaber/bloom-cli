@@ -2,7 +2,7 @@
 
 set -e
 
-exe="$PWD"/target/debug/cli-bloom
+exe="$PWD"/target/debug/bloom-cli
 filter="$PWD"/target/tmp/filter-file
 beef="$PWD"/tests/deadbeef
 
