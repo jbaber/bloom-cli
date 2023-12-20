@@ -3,7 +3,9 @@
 set -e
 
 exe="$PWD"/target/debug/bloom-cli
-filter="$PWD"/target/tmp/filter-file
+tmp="$PWD"/target/tmp
 beef="$PWD"/tests/deadbeef
 
-"$exe" -x "$filter" -i "$beef" 2>/dev/null
+# Create fresh and insert
+"$exe" -x "$tmp"/filter-1 -i "$beef" 2>/dev/null
+"$exe" -x "$tmp"/filter-1 -q "$beef" 2>/dev/null
