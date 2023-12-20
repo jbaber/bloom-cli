@@ -11,7 +11,7 @@ use std::process;
 use xxhash_rust::xxh32;
 
 macro_rules! vprintln {
-    ($level:literal, $($message:expr),+) => {
+    ($level:expr, $($message:expr),+) => {
         if $level {
             eprintln!($($message ,)+);
         }
@@ -528,6 +528,10 @@ struct Args {
     /// file to (q)uery for in the filter
     #[argh(option, short='q')]
     file_to_query: Option<String>,
+
+    /// send verbose output to stderr
+    #[argh(switch, short='v')]
+    verbose: bool,
 }
 
 
@@ -594,13 +598,18 @@ fn query_existing_filter_and_quit(filter_filename: &str, query_filename: &str) {
 
 
 /// Procedure that will exit whole program happily or with error
-fn insert_existing_filter_and_quit(filter_filename: &str, insert_filename: &str) {
+fn insert_existing_filter_and_quit(
+    verbosity: bool,
+    filter_filename: &str,
+    insert_filename: &str
+) {
     if insert_filename.eq(filter_filename) {
         println!("Can't add a filter to itself");
         process::exit(5);
     }
 
-    vprintln!(true,
+    vprintln!(
+        verbosity,
         "Adding file '{}' to existing filter at '{}'",
         insert_filename,
         filter_filename
@@ -636,13 +645,17 @@ fn insert_existing_filter_and_quit(filter_filename: &str, insert_filename: &str)
 
 
 /// Procedure that will exit whole program happily or with error
-fn new_filter_and_quit(filter_filename: &str, to_add_filename: Option<String>) {
+fn new_filter_and_quit(
+    verbosity: bool,
+    filter_filename: &str,
+    to_add_filename: Option<String>
+) {
     let ff_path = Path::new(&filter_filename);
     if ff_path.exists() {
         println!("'{}' already exists", filter_filename);
         process::exit(12);
     }
-    vprintln!(true, "Creating a new filter at '{}'", filter_filename);
+    vprintln!(verbosity, "Creating a new filter at '{}'", filter_filename);
     let mut filter = fresh_filter();
 
     let file_to_insert = match to_add_filename {
@@ -721,11 +734,16 @@ fn main() {
         else {
             None
         };
-        new_filter_and_quit(&args.filter_filename, file_to_insert);
+        new_filter_and_quit(
+            args.verbose,
+            &args.filter_filename,
+            file_to_insert
+        );
     }
     else {
         if args.file_to_insert.is_some() {
             insert_existing_filter_and_quit(
+                args.verbose,
                 &args.filter_filename,
                 &args.file_to_insert.unwrap()
             );
