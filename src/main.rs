@@ -10,6 +10,14 @@ use std::path::Path;
 use std::process;
 use xxhash_rust::xxh32;
 
+macro_rules! vprintln {
+    ($level:literal, $($message:expr),+) => {
+        if $level {
+            eprintln!($($message ,)+);
+        }
+    };
+}
+
 /* Create an empty bloom filter 3321928 bits long
 *
 *  Approximately optimal m (# bits) and k (# hashes) for e error rate
@@ -592,7 +600,7 @@ fn insert_existing_filter_and_quit(filter_filename: &str, insert_filename: &str)
         process::exit(5);
     }
 
-    eprintln!(
+    vprintln!(true,
         "Adding file '{}' to existing filter at '{}'",
         insert_filename,
         filter_filename
@@ -634,7 +642,7 @@ fn new_filter_and_quit(filter_filename: &str, to_add_filename: Option<String>) {
         println!("'{}' already exists", filter_filename);
         process::exit(12);
     }
-    eprintln!("Creating a new filter at '{}'", filter_filename);
+    vprintln!(true, "Creating a new filter at '{}'", filter_filename);
     let mut filter = fresh_filter();
 
     let file_to_insert = match to_add_filename {
