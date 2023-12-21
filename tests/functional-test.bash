@@ -53,3 +53,39 @@ rm -f "$tmp"/filter-3
 [[ -f $deadbeef ]] || exit 1
 [[ $("$exe" -x "$tmp"/filter-3 -q "$beefs") = "IN" ]] || exit 1
 [[ -f $beefs ]] || exit 1
+
+# Errors
+
+# Query and insert simultaneously
+rm -f "$tmp"/filter-4
+[[ ! -f "$tmp"/filter-4 ]] || exit 1
+set +e
+"$exe" -x "$tmp"/filter-4 -q $beefs -i $beefs > /dev/null
+result=$?
+set -e
+[[ $result -eq 17 ]] || exit 1
+[[ ! -f "$tmp"/filter-4 ]] || exit 1
+[[ -f $beefs ]] || exit 1
+
+# Query on newly created filter
+rm -f "$tmp"/filter-5
+[[ ! -f "$tmp"/filter-5 ]] || exit 1
+set +e
+"$exe" -x "$tmp"/filter-5 -q $beefs > /dev/null
+result=$?
+set -e
+[[ $result -eq 9 ]] || exit 1
+[[ ! -f "$tmp"/filter-5 ]] || exit 1
+[[ -f $beefs ]] || exit 1
+
+# Do nothing to an existing filter
+rm -f "$tmp"/filter-6
+[[ ! -f "$tmp"/filter-6 ]] || exit 1
+"$exe" -x "$tmp"/filter-6
+[[ -f "$tmp"/filter-6 ]] || exit 1
+set +e
+"$exe" -x "$tmp"/filter-6 > /dev/null
+result=$?
+set -e
+[[ $result -eq 14 ]] || exit 1
+[[ -f "$tmp"/filter-6 ]] || exit 1
