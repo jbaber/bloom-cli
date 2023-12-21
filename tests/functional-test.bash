@@ -89,3 +89,16 @@ result=$?
 set -e
 [[ $result -eq 14 ]] || exit 1
 [[ -f "$tmp"/filter-6 ]] || exit 1
+
+# TODO Make this test work
+# Non regular files
+# rm -f "$tmp"/x
+# mkfifo "$tmp"/x
+# [[ -e "$tmp"/x ]] || exit 1
+# [[ ! -f "$tmp"/x ]] || exit 1
+# set +e
+# "$exe" -x "$tmp"/x
+# result=$?
+# set -e
+# [[ $result -eq 3 ]] || exit 1
+# [[ -f "$tmp"/x ]] || exit 1
