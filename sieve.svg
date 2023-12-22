@@ -28,9 +28,9 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="pt"
      showgrid="false"
-     inkscape:zoom="0.32753907"
-     inkscape:cx="180.13118"
-     inkscape:cy="264.09063"
+     inkscape:zoom="0.2316051"
+     inkscape:cx="1096.6943"
+     inkscape:cy="403.70441"
      inkscape:window-width="1364"
      inkscape:window-height="766"
      inkscape:window-x="0"
@@ -46,6 +46,14 @@ Created by potrace 1.15, written by Peter Selinger 2001-2017
      fill="#000000"
      stroke="none"
      id="g58">
+    <rect
+       style="fill:#d3d3d3;stroke-width:7.5;fill-opacity:1"
+       id="rect289"
+       width="12800"
+       height="6400"
+       x="1.201766"
+       y="-4889.0063"
+       transform="scale(1,-1)" />
     <g
        id="g846"
        transform="matrix(1.7963069,0,0,1.7963069,530.95568,-4063.6722)">
