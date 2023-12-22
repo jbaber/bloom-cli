@@ -90,16 +90,105 @@ set -e
 [[ $result -eq 14 ]] || exit 1
 [[ -f "$tmp"/filter-6 ]] || exit 1
 
-# Non regular file as filter
+# Can't add non-regular file to a fresh filter
 rm -f "$tmp"/x
 [[ ! -e "$tmp"/x ]] || exit 1
 mkfifo "$tmp"/x
 [[ -e "$tmp"/x ]] || exit 1
 [[ ! -f "$tmp"/x ]] || exit 1
 set +e
-"$exe" -x "$tmp"/x
+"$exe" -x "$tmp"/filter-7 -i "$tmp"/x >/dev/null
 result=$?
 set -e
 [[ $result -eq 3 ]] || exit 1
 [[ -e "$tmp"/x ]] || exit 1
 [[ ! -f "$tmp"/x ]] || exit 1
+[[ ! -e "$tmp"/filter-7 ]] || exit 1
+
+# Can't add or query non-regular file to existing filter
+rm -f "$tmp"/x
+[[ ! -e "$tmp"/x ]] || exit 1
+mkfifo "$tmp"/x
+[[ -e "$tmp"/x ]] || exit 1
+[[ ! -f "$tmp"/x ]] || exit 1
+rm -f "$tmp"/filter-8
+[[ ! -e "$tmp"/filter-8 ]] || exit 1
+"$exe" -x "$tmp"/filter-8
+[[ -f "$tmp"/filter-8 ]] || exit 1
+
+# insert
+set +e
+"$exe" -x "$tmp"/filter-8 -i "$tmp"/x > /dev/null
+result=$?
+set -e
+[[ $result -eq 3 ]] || exit 1
+[[ -e "$tmp"/x ]] || exit 1
+[[ ! -f "$tmp"/x ]] || exit 1
+[[ -f "$tmp"/filter-8 ]] || exit 1
+
+# query
+set +e
+"$exe" -x "$tmp"/filter-8 -q "$tmp"/x >/dev/null
+result=$?
+set -e
+[[ $result -eq 3 ]] || exit 1
+[[ -e "$tmp"/x ]] || exit 1
+[[ ! -f "$tmp"/x ]] || exit 1
+[[ -f "$tmp"/filter-8 ]] || exit 1
+
+# Can't add/query non-existent files from existing filter
+rm -f "$tmp"/filter-9
+[[ ! -f "$tmp"/filter-9 ]] || exit 1
+"$exe" -x "$tmp"/filter-9
+[[ -f "$tmp"/filter-9 ]] || exit 1
+set +e
+"$exe" -x "$tmp"/filter-9 -i UNLIKELY_TO_EXIST >/dev/null
+result=$?
+set -e
+[[ $result -eq 2 ]] || exit 1
+[[ -f "$tmp"/filter-9 ]] || exit 1
+set +e
+"$exe" -x "$tmp"/filter-9 -q UNLIKELY_TO_EXIST >/dev/null
+result=$?
+set -e
+[[ $result -eq 2 ]] || exit 1
+[[ -f "$tmp"/filter-9 ]] || exit 1
+
+# Can't add non-existent file to fresh filter
+rm -f "$tmp"/filter-10
+[[ ! -e "$tmp"/filter-10 ]] || exit 1
+set +e
+"$exe" -x "$tmp"/filter-10 -i UNLIKELY_TO_EXIST >/dev/null
+result=$?
+set -e
+[[ $result -eq 2 ]] || exit 1
+[[ ! -e "$tmp"/filter-10 ]] || exit 1
+
+# Can't add/query filter to itself
+rm -f "$tmp"/filter-11
+[[ ! -e "$tmp"/filter-11 ]] || exit 1
+"$exe" -x "$tmp"/filter-11
+[[ -f "$tmp"/filter-11 ]] || exit 1
+set +e
+"$exe" -x "$tmp"/filter-11 -i "$tmp"/filter-11 >/dev/null
+result=$?
+set -e
+[[ $result -eq 5 ]] || exit 1
+[[ -f "$tmp"/filter-11 ]] || exit 1
+set +e
+"$exe" -x "$tmp"/filter-11 -q "$tmp"/filter-11 >/dev/null
+result=$?
+set -e
+[[ $result -eq 5 ]] || exit 1
+[[ -f "$tmp"/filter-11 ]] || exit 1
+
+# Don't clobber existing filter
+rm -f "$tmp"/filter-12
+[[ ! -e "$tmp"/filter-12 ]] || exit 1
+"$exe" -x "$tmp"/filter-12
+[[ -f "$tmp"/filter-12 ]] || exit 1
+set +e
+"$exe" -x "$tmp"/filter-12
+result=$?
+[[ $result -eq 14 ]] || exit
+[[ -f "$tmp"/filter-12 ]] || exit 1

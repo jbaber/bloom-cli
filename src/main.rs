@@ -573,6 +573,8 @@ fn query_existing_filter_and_quit(filter_filename: &str, query_filename: &str) {
         process::exit(5);
     }
 
+    regular_file_or_fail(query_filename);
+
     let filter: Result<Vec<u64>, String> = read_filter_from_disk(&filter_filename).or_else(|err| {
         println!("ERROR: {:?}", err);
         process::exit(16);
@@ -607,6 +609,8 @@ fn insert_existing_filter_and_quit(
         println!("Can't add a filter to itself");
         process::exit(5);
     }
+
+    regular_file_or_fail(insert_filename);
 
     vprintln!(
         verbosity,
@@ -660,6 +664,7 @@ fn new_filter_and_quit(
 
     let file_to_insert = match to_add_filename {
         Some(ref filename) => {
+            regular_file_or_fail(&filename);
             match fs::read(&filename) {
                 Ok(actual_bytes) => {
                     Some(actual_bytes)
